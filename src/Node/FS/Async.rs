@@ -31,10 +31,12 @@ where
         }
     }, move |result| {
         let (error, value) = match result {
-            Ok(value) => (crate::Value::Null, value),
-            Err(error) => (error, crate::Value::Unit),
+            Ok(value) => (Purs_Data_Nullable::Data_Nullable_null(), value),
+            Err(error) => (Purs_Data_Nullable::Data_Nullable_notNull(error), crate::Value::Unit),
         };
-        callback.unwrap_func2()(error, value);
+        // Callback's first argument is the native Nullable Error carrier,
+        // not a JavaScript-style null/Error value.
+        callback.unwrap_func2()(crate::Value::Class(Rc::new(error)), value);
     });
 }
 
@@ -43,13 +45,13 @@ fn purust_fs_path(path: crate::UnknownType) -> String {
 }
 
 fn purust_fs_require_utf8(options: &crate::UnknownType) {
-    let encoding = options.__purust_get_field("encoding")
+    let fields = options.__purust_foreign_object();
+    let encoding = fields.get("encoding")
         .expect("Node.FS.Async: only qualified text-file options are implemented")
         .unwrap_string().to_ascii_lowercase();
     assert!(encoding == "utf8" || encoding == "utf-8",
         "Node.FS.Async: only qualified UTF-8 text IO is implemented");
     // Fail closed on additional options rather than silently ignoring flags.
-    let fields = options.__purust_record_fields().expect("Node.FS.Async options record");
     assert!(fields.entries().iter().all(|(key, _)| key == "encoding"),
         "Node.FS.Async: additional text-file options are not qualified");
 }
@@ -57,8 +59,9 @@ fn purust_fs_require_utf8(options: &crate::UnknownType) {
 pub fn Node_FS_Async_mkdirImpl() -> crate::UnknownType {
     crate::Value::Func3(purust_core::Func3::Shared(Rc::new(|path, options, callback| {
         let path = purust_fs_path(path);
-        let recursive = options.__purust_get_field("recursive").expect("mkdir recursive option").unwrap_bool();
-        let mode = options.__purust_get_field("mode").expect("mkdir mode option").unwrap_string();
+        let fields = options.__purust_foreign_object();
+        let recursive = fields.get("recursive").expect("mkdir recursive option").unwrap_bool();
+        let mode = fields.get("mode").expect("mkdir mode option").unwrap_string();
         let mode = u32::from_str_radix(&mode, 8).expect("mkdir octal mode");
         purust_fs_dispatch("mkdir", path.clone(), callback, move || {
             let mut builder = std::fs::DirBuilder::new();
