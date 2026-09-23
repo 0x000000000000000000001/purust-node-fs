@@ -53,7 +53,7 @@ cargo build --manifest-path output/purust_output/Cargo.toml
 
 echo "=== Running NodeFS tests ==="
 # The upstream suite creates these; it expects to start from a clean tree.
-rm -rf tmp test/node-fs-tests test/TestAsync.purs.partial
+rm -rf tmp test/node-fs-tests* test/TestAsync.purs.partial
 BINARY="output/purust_output/target/debug/purust_output"
 status=0
 node -e 'const { spawnSync } = require("node:child_process"); const result = spawnSync(process.argv[1], [], { stdio: "inherit", timeout: 60000 }); if (result.error) console.error(result.error.message); process.exit(result.status ?? 1);' "$BINARY" > output/actual.stdout 2> output/actual.stderr || status=$?

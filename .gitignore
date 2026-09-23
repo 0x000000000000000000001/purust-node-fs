@@ -8,3 +8,6 @@
 output/
 output.bak/
 package-lock.json
+test/node-fs-tests*/
+test/TestAsync.purs.partial
+.spago/
