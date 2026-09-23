@@ -1,6 +1,7 @@
 package:
   name: node-fs
   dependencies:
+    - aff
     - datetime
     - effect
     - either
@@ -22,7 +23,9 @@ package:
   test:
     main: Test.Main
     dependencies:
+      - aff
       - assert
+      - node-event-emitter
       - console
       - effect
       - exceptions
@@ -38,6 +41,9 @@ package:
       - tailrec
 
 workspace:
+  backend:
+    cmd: ../purust/bin/purust
+    args: [--main, Test.Main, --source, output, --out, output/purust_output, --threaded]
   packageSet:
     registry: 77.7.0
   extraPackages:
@@ -47,6 +53,8 @@ workspace:
       path: "../purust-argonaut-core"
     arrays:
       path: "../purust-arrays"
+    arraybuffer-types:
+      path: "../purust-arraybuffer-types"
     assert:
       path: "../purust-assert"
     avar:
