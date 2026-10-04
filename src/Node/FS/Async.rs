@@ -1,6 +1,8 @@
 use std::rc::Rc;
 
-fn purust_fs_error(operation: &str, path: &str, error: std::io::Error) -> crate::UnknownType {
+// Shared with the Node.FS.Aff blocking path so error messages stay
+// byte-identical to the historical Async dispatch.
+pub fn purust_fs_error(operation: &str, path: &str, error: std::io::Error) -> crate::UnknownType {
     let code = match error.kind() {
         std::io::ErrorKind::NotFound => "ENOENT",
         std::io::ErrorKind::PermissionDenied => "EACCES",

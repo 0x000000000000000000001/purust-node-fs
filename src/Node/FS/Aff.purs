@@ -51,6 +51,7 @@ import Node.Encoding (Encoding)
 import Node.FS as F
 import Node.FS.Async as A
 import Node.FS.Constants (AccessMode, CopyMode)
+import Node.FS.Sync as S
 import Node.FS.Perms (Perms)
 import Node.FS.Stats (Stats)
 import Node.Path (FilePath)
@@ -95,6 +96,41 @@ toAff5
   -> z
   -> Aff a
 toAff5 f a b c d e = toAff (f a b c d e)
+
+-- | Run the `Node.FS.Sync` equivalent on a blocking thread and deliver it as
+-- | an Aff wait. The first argument keeps the previous `makeAff`/`Async`
+-- | implementation as the JavaScript oracle; on the Rust host the blocking
+-- | effect is authoritative and its internal completion bypasses the Promise
+-- | checkpoint. Only the five dominant FS operations use it.
+nativeAff
+  :: forall a
+   . (Unit -> Aff a)
+  -> Effect a
+  -> Aff a
+nativeAff = nativeAffImpl
+
+foreign import nativeAffImpl
+  :: forall a
+   . (Unit -> Aff a)
+  -> Effect a
+  -> Aff a
+
+-- | `writeTextFile` keeps the historical Async error text (an "open" dispatch
+-- | even for the write step), so it uses a dedicated native effect instead of
+-- | `Node.FS.Sync.writeTextFile`. The fallback is the previous `makeAff`
+-- | implementation for the JavaScript oracle.
+nativeAffWriteText
+  :: (Unit -> Aff Unit)
+  -> FilePath
+  -> String
+  -> Aff Unit
+nativeAffWriteText = nativeAffWriteTextImpl
+
+foreign import nativeAffWriteTextImpl
+  :: (Unit -> Aff Unit)
+  -> FilePath
+  -> String
+  -> Aff Unit
 
 access :: String -> Aff (Maybe Error)
 access path = makeAff \k -> do
@@ -146,7 +182,7 @@ chmod = toAff2 A.chmod
 -- | Gets file statistics.
 -- |
 stat :: FilePath -> Aff Stats
-stat = toAff1 A.stat
+stat path = nativeAff (\_ -> toAff1 A.stat path) (S.stat path)
 
 -- | Gets file or symlink statistics. `lstat` is identical to `stat`, except
 -- | that if the `FilePath` is a symbolic link, then the link itself is stat-ed,
@@ -223,7 +259,7 @@ rm' = toAff2 A.rm'
 -- | Makes a new directory.
 -- |
 mkdir :: FilePath -> Aff Unit
-mkdir = toAff1 A.mkdir
+mkdir path = nativeAff (\_ -> toAff1 A.mkdir path) (S.mkdir path)
 
 -- |
 -- | Makes a new directory with all of its options.
@@ -235,7 +271,7 @@ mkdir' = toAff2 A.mkdir'
 -- | Reads the contents of a directory.
 -- |
 readdir :: FilePath -> Aff (Array FilePath)
-readdir = toAff1 A.readdir
+readdir path = nativeAff (\_ -> toAff1 A.readdir path) (S.readdir path)
 
 -- |
 -- | Sets the accessed and modified times for the specified file.
@@ -253,7 +289,7 @@ readFile = toAff1 A.readFile
 -- | Reads the entire contents of a text file with the specified encoding.
 -- |
 readTextFile :: Encoding -> FilePath -> Aff String
-readTextFile = toAff2 A.readTextFile
+readTextFile encoding path = nativeAff (\_ -> toAff2 A.readTextFile encoding path) (S.readTextFile encoding path)
 
 -- |
 -- | Writes a buffer to a file.
@@ -265,7 +301,7 @@ writeFile = toAff2 A.writeFile
 -- | Writes text to a file using the specified encoding.
 -- |
 writeTextFile :: Encoding -> FilePath -> String -> Aff Unit
-writeTextFile = toAff3 A.writeTextFile
+writeTextFile encoding path text = nativeAffWriteText (\_ -> toAff3 A.writeTextFile encoding path text) path text
 
 -- |
 -- | Appends the contents of a buffer to a file.

@@ -6,6 +6,7 @@ import Effect (Effect)
 import Test as Test
 import Test.Streams as Streams
 import TestAff as TestAff
+import TestAffNative as TestAffNative
 import TestAsync as TestAsync
 
 main :: Effect Unit
@@ -14,3 +15,4 @@ main = do
   TestAsync.main
   Streams.main
   TestAff.main
+  TestAffNative.main
